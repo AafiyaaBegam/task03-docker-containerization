@@ -1,9 +1,16 @@
 
-from main import check_dependencies, info, root
+import importlib.util
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+import main
 
 
 def test_info_returns_service_details():
-    result = info()
+    result = main.info()
 
     assert result["service"] == "Task 03 Containerization Demo"
     assert result["database"] == "PostgreSQL"
@@ -11,37 +18,26 @@ def test_info_returns_service_details():
     assert result["runtime"] == "non-root"
 
 
-def test_check_dependencies_returns_expected_keys(monkeypatch):
-    import main
+def test_check_dependencies_returns_unavailable_when_services_fail(
+    monkeypatch,
+):
+    def fail_connection(*args, **kwargs):
+        raise RuntimeError("Service unavailable")
 
-    monkeypatch.setattr(
-        main.psycopg,
-        "connect",
-        lambda *args, **kwargs: (_ for _ in ()).throw(
-            RuntimeError("Database unavailable")
-        ),
-    )
-    monkeypatch.setattr(
-        main.redis.Redis,
-        "from_url",
-        lambda *args, **kwargs: (_ for _ in ()).throw(
-            RuntimeError("Redis unavailable")
-        ),
-    )
+    monkeypatch.setattr(main.psycopg, "connect", fail_connection)
+    monkeypatch.setattr(main.redis.Redis, "from_url", fail_connection)
 
-    result = check_dependencies()
+    result = main.check_dependencies()
 
-    assert set(result.keys()) == {"postgres", "redis"}
-    assert result["postgres"] == "unavailable"
-    assert result["redis"] == "unavailable"
+    assert result == {
+        "postgres": "unavailable",
+        "redis": "unavailable",
+    }
 
 
-def test_root_returns_fallback_message():
-    import main
+def test_root_fallback_message_when_frontend_is_missing(monkeypatch):
+    monkeypatch.setattr(main, "STATIC_DIR", ROOT / "missing_test_static")
 
-    if not (
-        main.STATIC_DIR.exists()
-        and (main.STATIC_DIR / "index.html").exists()
-    ):
-        result = root()
-        assert "Frontend assets are not built yet" in result["message"]
+    result = main.root()
+
+    assert "Frontend assets are not built yet" in result["message"]
