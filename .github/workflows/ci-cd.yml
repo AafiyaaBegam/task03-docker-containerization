@@ -32,8 +32,7 @@ jobs:
           pip install ruff pytest
 
       - name: Lint Python
-        run: ruff check main.py
-
+       run: ruff check main.py --select E,F
       - name: Check Python syntax
         run: python -m py_compile main.py
 
