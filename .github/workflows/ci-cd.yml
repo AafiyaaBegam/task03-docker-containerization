@@ -10,7 +10,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   lint-and-test:
@@ -45,7 +44,7 @@ jobs:
         run: docker compose config --quiet
 
   docker-build:
-    name: Build Docker image
+    name: Build and push Docker image
     runs-on: ubuntu-latest
     needs: lint-and-test
 
@@ -53,8 +52,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Log in to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Build Docker image
-        run: |
-          docker build \
-            --tag task03-containerization:${{ github.sha }} \
-            .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            aafiyaa/task03-docker-containerization:latest
+            aafiyaa/task03-docker-containerization:${{ github.sha }}
