@@ -7,25 +7,38 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
-  validate:
-    name: Validate project files
+  lint-and-test:
+    name: Lint and test Python
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check required files
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
         run: |
-          test -f Dockerfile
-          test -f compose.yaml
-          test -f main.py
-          test -f requirements.txt
-          test -f README.md
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff pytest
+
+      - name: Lint Python
+        run: ruff check main.py
 
       - name: Check Python syntax
         run: python -m py_compile main.py
 
-      - name: Validate Docker Compose configuration
+      - name: Run unit tests
+        run: pytest -q
+
+      - name: Validate Docker Compose
         run: docker compose config --quiet
