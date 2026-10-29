@@ -8,8 +8,8 @@ COPY package.json ./
 RUN npm install --no-audit --no-fund
 
 COPY index.html style.css ./
+COPY src/ ./src/
 RUN npm run build
-
 # Stage 2: Install Python dependencies
 FROM python:3.12-alpine AS python-deps
 
